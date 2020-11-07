@@ -1855,6 +1855,7 @@ var (
 	releaseCapture              *windows.LazyProc
 	releaseDC                   *windows.LazyProc
 	removeMenu                  *windows.LazyProc
+	deleteMenu                  *windows.LazyProc
 	screenToClient              *windows.LazyProc
 	sendDlgItemMessage          *windows.LazyProc
 	sendInput                   *windows.LazyProc
@@ -1888,6 +1889,15 @@ var (
 	updateWindow                *windows.LazyProc
 	windowFromDC                *windows.LazyProc
 	windowFromPoint             *windows.LazyProc
+	redrawWindow                *windows.LazyProc
+	enableMenuItem              *windows.LazyProc
+	getSubMenu                  *windows.LazyProc
+	getMenuItemID               *windows.LazyProc
+	getMenuItemCount            *windows.LazyProc
+	getMenuItemInfo             *windows.LazyProc
+	setMenuItemBitmaps          *windows.LazyProc
+	getMenuCheckMarkDimensions  *windows.LazyProc
+	trackPopupMenu              *windows.LazyProc
 )
 
 func init() {
@@ -2000,6 +2010,7 @@ func init() {
 	releaseCapture = libuser32.NewProc("ReleaseCapture")
 	releaseDC = libuser32.NewProc("ReleaseDC")
 	removeMenu = libuser32.NewProc("RemoveMenu")
+	deleteMenu = libuser32.NewProc("DeleteMenu")
 	screenToClient = libuser32.NewProc("ScreenToClient")
 	sendDlgItemMessage = libuser32.NewProc("SendDlgItemMessageW")
 	sendInput = libuser32.NewProc("SendInput")
@@ -2038,6 +2049,15 @@ func init() {
 	updateWindow = libuser32.NewProc("UpdateWindow")
 	windowFromDC = libuser32.NewProc("WindowFromDC")
 	windowFromPoint = libuser32.NewProc("WindowFromPoint")
+	redrawWindow = libuser32.NewProc("RedrawWindow")
+	enableMenuItem = libuser32.NewProc("EnableMenuItem")
+	getSubMenu = libuser32.NewProc("GetSubMenu")
+	getMenuItemID = libuser32.NewProc("GetMenuItemID")
+	getMenuItemCount = libuser32.NewProc("GetMenuItemCount")
+	getMenuItemInfo = libuser32.NewProc("GetMenuItemInfoW")
+	setMenuItemBitmaps = libuser32.NewProc("SetMenuItemBitmaps")
+	getMenuCheckMarkDimensions = libuser32.NewProc("GetMenuCheckMarkDimensions")
+	trackPopupMenu = libuser32.NewProc("TrackPopupMenu")
 }
 
 func AddClipboardFormatListener(hwnd HWND) bool {
@@ -3019,6 +3039,15 @@ func RemoveMenu(hMenu HMENU, uPosition, uFlags uint32) bool {
 	return ret != 0
 }
 
+func DeleteMenu(hMenu HMENU, uPosition uint32, uFlags uint32) bool {
+	ret, _, _ := syscall.Syscall(deleteMenu.Addr(), 3,
+		uintptr(hMenu),
+		uintptr(uPosition),
+		uintptr(uFlags))
+
+	return ret != 0
+}
+
 func ScreenToClient(hWnd HWND, point *POINT) bool {
 	ret, _, _ := syscall.Syscall(screenToClient.Addr(), 2,
 		uintptr(hWnd),
@@ -3352,4 +3381,120 @@ func WindowFromPoint(Point POINT) HWND {
 		0)
 
 	return HWND(ret)
+}
+
+const (
+	// RedrawWindow() flags
+	RDW_INVALIDATE    = 0x0001
+	RDW_INTERNALPAINT = 0x0002
+	RDW_ERASE         = 0x0004
+
+	RDW_VALIDATE        = 0x0008
+	RDW_NOINTERNALPAINT = 0x0010
+	RDW_NOERASE         = 0x0020
+
+	RDW_NOCHILDREN  = 0x0040
+	RDW_ALLCHILDREN = 0x0080
+
+	RDW_UPDATENOW = 0x0100
+	RDW_ERASENOW  = 0x0200
+
+	RDW_FRAME   = 0x0400
+	RDW_NOFRAME = 0x0800
+)
+
+func RedrawWindow(hWnd HWND, lprcUpdate *RECT, hrgnUpdate HRGN, flags uint32) bool {
+	ret, _, _ := syscall.Syscall6(redrawWindow.Addr(), 4,
+		uintptr(hWnd),
+		uintptr(unsafe.Pointer(lprcUpdate)),
+		uintptr(hrgnUpdate),
+		uintptr(flags),
+		0,
+		0)
+
+	return ret != 0
+}
+
+func EnableMenuItem(hMenu HMENU, uIDEnableItem uint32, uEnable uint32) bool {
+	ret, _, _ := syscall.Syscall(enableMenuItem.Addr(), 3,
+		uintptr(hMenu),
+		uintptr(uIDEnableItem),
+		uintptr(uEnable))
+
+	return ret != 0
+}
+
+func GetSubMenu(hMenu HMENU, nPos int32) HMENU {
+	ret, _, _ := syscall.Syscall(getSubMenu.Addr(), 2,
+		uintptr(hMenu),
+		uintptr(nPos),
+		0)
+
+	return HMENU(ret)
+}
+
+func GetMenuItemID(hMenu HMENU, nPos int32) uint32 {
+	ret, _, _ := syscall.Syscall(getMenuItemID.Addr(), 2,
+		uintptr(hMenu),
+		uintptr(nPos),
+		0)
+
+	return uint32(ret)
+}
+
+func GetMenuItemCount(hMenu HMENU) int32 {
+	ret, _, _ := syscall.Syscall(getMenuItemCount.Addr(), 1,
+		uintptr(hMenu),
+		0,
+		0)
+
+	return int32(ret)
+}
+
+func GetMenuItemInfo(hmenu HMENU, item uint32, fByPosition BOOL, lpmii *MENUITEMINFO) bool {
+	ret, _, _ := syscall.Syscall6(getMenuItemInfo.Addr(), 4,
+		uintptr(hmenu),
+		uintptr(item),
+		uintptr(fByPosition),
+		uintptr(unsafe.Pointer(lpmii)),
+		0,
+		0)
+
+	return ret != 0
+}
+
+func SetMenuItemBitmaps(hMenu HMENU, uPosition uint32, uFlags uint32, hBitmapUnchecked HBITMAP, hBitmapChecked HBITMAP) bool {
+	ret, _, _ := syscall.Syscall6(setMenuItemBitmaps.Addr(), 5,
+		uintptr(hMenu),
+		uintptr(uPosition),
+		uintptr(uFlags),
+		uintptr(hBitmapUnchecked),
+		uintptr(hBitmapChecked),
+		0)
+
+	return ret != 0
+}
+
+func GetMenuCheckMarkDimensions() int32 {
+	ret, _, _ := syscall.Syscall(getMenuCheckMarkDimensions.Addr(), 0,
+		0,
+		0,
+		0)
+
+	return int32(ret)
+}
+
+func TrackPopupMenu(hMenu HMENU, uFlags uint32, x, y int32, nReserved int32, hWnd HWND, prcRect *RECT) uint32 {
+	ret, _, _ := syscall.Syscall9(trackPopupMenu.Addr(), 7,
+		uintptr(hMenu),
+		uintptr(uFlags),
+		uintptr(x),
+		uintptr(y),
+		uintptr(nReserved),
+		uintptr(hWnd),
+		uintptr(unsafe.Pointer(prcRect)),
+		0,
+		0)
+
+	return uint32(ret)
 }
