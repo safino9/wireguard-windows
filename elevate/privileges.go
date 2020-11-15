@@ -13,13 +13,15 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func DropAllPrivileges(retainDriverLoading bool) error {
-	var luid windows.LUID
-	if retainDriverLoading {
-		err := windows.LookupPrivilegeValue(nil, windows.StringToUTF16Ptr("SeLoadDriverPrivilege"), &luid)
+func DropAllPrivileges(retainPrivileges []string) error {
+	retainLUIDs := make(map[windows.LUID]bool)
+	for _, luidName := range retainPrivileges {
+		var luid windows.LUID
+		err := windows.LookupPrivilegeValue(nil, windows.StringToUTF16Ptr(luidName), &luid)
 		if err != nil {
 			return err
 		}
+		retainLUIDs[luid] = true
 	}
 	var processToken windows.Token
 	err := windows.OpenProcessToken(windows.CurrentProcess(), windows.TOKEN_READ|windows.TOKEN_WRITE, &processToken)
@@ -43,9 +45,8 @@ func DropAllPrivileges(retainDriverLoading bool) error {
 		return errors.New("GetTokenInformation returned incomplete data")
 	}
 	tokenPrivileges := (*windows.Tokenprivileges)(unsafe.Pointer(&buffer[0]))
-	for i := uint32(0); i < tokenPrivileges.PrivilegeCount; i++ {
-		item := (*windows.LUIDAndAttributes)(unsafe.Pointer(uintptr(unsafe.Pointer(&tokenPrivileges.Privileges[0])) + unsafe.Sizeof(tokenPrivileges.Privileges[0])*uintptr(i)))
-		if retainDriverLoading && item.Luid == luid {
+	for _, item := range tokenPrivileges.AllPrivileges() {
+		if retainLUIDs[item.Luid] {
 			continue
 		}
 		item.Attributes = windows.SE_PRIVILEGE_REMOVED

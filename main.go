@@ -221,7 +221,7 @@ func main() {
 		if len(os.Args) != 6 {
 			usage()
 		}
-		err := elevate.DropAllPrivileges(false)
+		err := elevate.DropAllPrivileges([]string{})
 		if err != nil {
 			fatal(err)
 		}

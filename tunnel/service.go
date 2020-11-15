@@ -179,7 +179,7 @@ func (service *tunnelService) Execute(args []string, r <-chan svc.ChangeRequest,
 	}
 
 	log.Println("Dropping privileges")
-	err = elevate.DropAllPrivileges(true)
+	err = elevate.DropAllPrivileges([]string{"SeLoadDriverPrivilege"})
 	if err != nil {
 		serviceError = services.ErrorDropPrivileges
 		return
